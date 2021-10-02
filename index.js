@@ -108,6 +108,30 @@ app.post("/alunos/verify", async (req, res) => {
     }
 });
 
+app.get("/alunos/bytoken/:token", async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        const busca = await pool.query("SELECT * FROM alunos WHERE usertoken = $1", [
+            token
+        ]);
+
+        if (busca.rowCount < 1) {
+            res.json([]);
+            return;
+        }
+        else {
+            res.json(busca.rows[0]);
+            return;
+        }
+
+    } catch (err) {
+        console.log(err);
+        res.json("Um problema ocorreu!");
+        return;
+    }
+});
+
 //criar uma solicitação
 app.get("/solicitacao/:token", async (req, res) => {
     try {

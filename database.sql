@@ -1,8 +1,15 @@
+--CLEAR DB:
+DROP TABLE IF EXISTS avaliador_selecionado;
+DROP TABLE IF EXISTS atividades_submetidas;
+DROP TABLE IF EXISTS avaliacoes;
+DROP TABLE IF EXISTS admins;
+DROP TABLE IF EXISTS avaliadores;
 DROP TABLE IF EXISTS atividades;
 DROP TABLE IF EXISTS alunos;
 DROP TABLE IF EXISTS alunos_pendentes;
-DROP TABLE IF EXISTS avaliadores;
 
+
+--DB:
 CREATE TABLE IF NOT EXISTS alunos(
 	id SERIAL NOT NULL,
 	nome VARCHAR(200) NOT NULL,
@@ -12,6 +19,7 @@ CREATE TABLE IF NOT EXISTS alunos(
 	curso VARCHAR(100) NOT NULL,
 	usertoken VARCHAR(100) NOT NULL UNIQUE,
 	ativo BOOLEAN NOT NULL DEFAULT TRUE,
+	status_entrega VARCHAR(50) NOT NULL DEFAULT FALSE,
 	data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id)
 );
@@ -90,6 +98,7 @@ CREATE TABLE IF NOT EXISTS atividades_submetidas(
 	usertoken VARCHAR(100) NOT NULL,
 	doc_link VARCHAR(1000),
 	nome_pdf VARCHAR(1000),
+	horas_validas VARCHAR(10) NOT NULL,
 	feedback VARCHAR(4000),
 	data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id),
@@ -99,4 +108,6 @@ CREATE TABLE IF NOT EXISTS atividades_submetidas(
 CREATE TABLE IF NOT EXISTS avaliador_selecionado(
 	id SERIAL NOT NULL,
 	id_avaliador_escolhido SERIAL NOT NULL
-)
+);
+
+INSERT INTO admins(email, senha, usertoken) VALUES ('admin@gmail.com','admin','sd67d57sadJVv5d7Nva85BFd58FSdaA6c9');
