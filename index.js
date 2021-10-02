@@ -707,6 +707,40 @@ app.put("/enviarAvaliacao", async (req, res) => {
     }
 });
 
+
+app.post("/aprovarAtividades", async (req, res) => {
+    try{
+
+        const body = req.body;
+
+        const isAvaliador = await pool.query(
+            "SELECT * FROM avaliadores WHERE usertoken = $1",
+            [body.token]
+        );
+
+        if (isAvaliador.rowCount < 1) {
+            res.json("Falha na permissão");
+            return;
+        }
+
+        const getAvaliacao = await pool.query("SELECT * FROM avaliacoes WHERE id = $1 AND token_avaliador = $2", [
+            body.id_avaliacao, body.token
+        ]);
+
+        const getAluno = await pool.query("UPDATE alunos SET status_entrega = TRUE WHERE usertoken = $1", [
+            getAvaliacao.rows[0].token_aluno
+        ]);
+
+        res.json("Atividades entregues!")
+        return;
+
+    }catch(err){
+        console.log(err)
+        res.json("")
+        return;
+    }
+});
+
 //marca Avaliacao como concluida
 app.post("/finalizarAvaliacao", async (req, res) => {
     try {
