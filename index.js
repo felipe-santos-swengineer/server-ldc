@@ -148,6 +148,19 @@ app.get("/solicitacao/:token", async (req, res) => {
             return;
         }
 
+        const temSolicitacao = await pool.query(
+            "SELECT * FROM avaliacoes WHERE token_aluno = $1",
+            [token]
+        );
+
+        for(var a = 0; a < temSolicitacao.rowCount; a++){
+            if(temSolicitacao.rows[a].status === "Pendente"){
+                res.json("Aguarde o resultado da ultima solicitação antes de uma requisitar uma nova");
+                return;
+            }
+        }
+       
+
         //escolher o avaliador que receberá a submissão
         const findAvaliadores = await pool.query("SELECT * FROM avaliadores ORDER BY id");
 
@@ -216,8 +229,8 @@ app.get("/solicitacao/:token", async (req, res) => {
 
         var setAtividades = [];
         for (var j = 0; j < getAtividades.rowCount; j++) {
-            setAtividades = await pool.query("INSERT INTO atividades_submetidas(id_avaliacao,titulo, data_inicio, data_fim, categoria, sub_categoria, descricao, quantidade_horas, usertoken, doc_link, nome_pdf) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)", [
-                avaliacaoID, getAtividades.rows[j].titulo, getAtividades.rows[j].data_inicio, getAtividades.rows[j].data_fim, getAtividades.rows[j].categoria, getAtividades.rows[j].sub_categoria, getAtividades.rows[j].descricao, getAtividades.rows[j].quantidade_horas, getAtividades.rows[j].usertoken, getAtividades.rows[j].doc_link, getAtividades.rows[j].nome_pdf
+            setAtividades = await pool.query("INSERT INTO atividades_submetidas(id_avaliacao,titulo, data_inicio, data_fim, categoria, sub_categoria, descricao, quantidade_horas, usertoken, doc_link, nome_pdf, horas_validas) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)", [
+                avaliacaoID, getAtividades.rows[j].titulo, getAtividades.rows[j].data_inicio, getAtividades.rows[j].data_fim, getAtividades.rows[j].categoria, getAtividades.rows[j].sub_categoria, getAtividades.rows[j].descricao, getAtividades.rows[j].quantidade_horas, getAtividades.rows[j].usertoken, getAtividades.rows[j].doc_link, getAtividades.rows[j].nome_pdf, "0"
             ])
         }
 
@@ -680,8 +693,8 @@ app.put("/enviarAvaliacao", async (req, res) => {
         }
 
         //update
-        const update = await pool.query("UPDATE atividades_submetidas SET feedback = $1 WHERE id = $2", [
-            body.newValue, body.id
+        const update = await pool.query("UPDATE atividades_submetidas SET feedback = $1, horas_validas = $2 WHERE id = $3", [
+            body.feedback, body.quantHoras, body.id
         ]);
 
         res.json("Feedback adicionado")
