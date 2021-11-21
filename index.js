@@ -29,11 +29,11 @@ app.post("/alunosPendentes", async (req, res) => {
         //validar criação
         const testarEmailAlunosPendentes = await pool.query(
             "SELECT * FROM alunos_pendentes WHERE email = $1", [newAluno.email]
-        );
+            );
 
         const testarEmailAlunos = await pool.query(
             "SELECT * FROM alunos WHERE email = $1", [newAluno.email]
-        );
+            );
 
         if (testarEmailAlunos.rowCount >= 1 || testarEmailAlunosPendentes.rowCount >= 1) {
             res.json("Email já está em uso");
@@ -45,7 +45,7 @@ app.post("/alunosPendentes", async (req, res) => {
             [newAluno.nome, newAluno.email,
             newAluno.senha, newAluno.matricula,
             newAluno.curso, newAluno.usertoken]
-        );
+            );
 
         res.json("Cadastro solicitado ao Administrador!");
         return;
@@ -64,7 +64,7 @@ app.post("/alunos/verifyP", async (req, res) => {
 
         const users = await pool.query("SELECT * FROM alunos_pendentes WHERE email = $1 and senha = $2", [
             myJSON.email, myJSON.senha
-        ]);
+            ]);
 
         if (users.rowCount < 1) {
             res.json([]);
@@ -90,7 +90,7 @@ app.post("/alunos/verify", async (req, res) => {
 
         const users = await pool.query("SELECT * FROM alunos WHERE email = $1 and senha = $2", [
             myJSON.email, myJSON.senha
-        ]);
+            ]);
 
         if (users.rowCount < 1) {
             res.json([]);
@@ -114,7 +114,7 @@ app.get("/alunos/bytoken/:token", async (req, res) => {
 
         const busca = await pool.query("SELECT * FROM alunos WHERE usertoken = $1", [
             token
-        ]);
+            ]);
 
         if (busca.rowCount < 1) {
             res.json([]);
@@ -141,7 +141,7 @@ app.get("/solicitacao/:token", async (req, res) => {
         const isAluno = await pool.query(
             "SELECT * FROM alunos WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (isAluno.rowCount < 1) {
             res.json("Operação Inválida: Sem permissão de aluno");
@@ -151,7 +151,7 @@ app.get("/solicitacao/:token", async (req, res) => {
         const temSolicitacao = await pool.query(
             "SELECT * FROM avaliacoes WHERE token_aluno = $1",
             [token]
-        );
+            );
 
         for(var a = 0; a < temSolicitacao.rowCount; a++){
             if(temSolicitacao.rows[a].status === "Pendente"){
@@ -159,7 +159,7 @@ app.get("/solicitacao/:token", async (req, res) => {
                 return;
             }
         }
-       
+
 
         //escolher o avaliador que receberá a submissão
         const findAvaliadores = await pool.query("SELECT * FROM avaliadores ORDER BY id");
@@ -177,7 +177,7 @@ app.get("/solicitacao/:token", async (req, res) => {
             avaliadorEscolhido = findAvaliadores.rows[0];
             const setAvaliador = await pool.query("INSERT INTO avaliador_selecionado (id_avaliador_escolhido) values ($1)", [
                 findAvaliadores.rows[0].id
-            ]);
+                ]);
         }
         else {
             for (var i = 0; i < findAvaliadores.rowCount; i++) {
@@ -187,7 +187,7 @@ app.get("/solicitacao/:token", async (req, res) => {
                 if (findAvaliadores.rows[findAvaliadores.rowCount - 1].id === getAvaliadorEscolhidoNumber.rows[0].id_avaliador_escolhido) {
                     const setAvalidor = await pool.query("UPDATE avaliador_selecionado SET id_avaliador_escolhido = $1 WHERE id = '1'", [
                         findAvaliadores.rows[0].id
-                    ]);
+                        ]);
                     avaliadorEscolhido = findAvaliadores.rows[0];
                     break;
                 }
@@ -196,7 +196,7 @@ app.get("/solicitacao/:token", async (req, res) => {
                 if (findAvaliadores.rows[i].id > getAvaliadorEscolhidoNumber.rows[0].id_avaliador_escolhido) {
                     const setAvalidor = await pool.query("UPDATE avaliador_selecionado SET id_avaliador_escolhido = $1 WHERE id = '1'", [
                         findAvaliadores.rows[i].id
-                    ]);
+                        ]);
                     avaliadorEscolhido = findAvaliadores.rows[i];
                     break;
                     //logica de clonar as atividades
@@ -210,20 +210,20 @@ app.get("/solicitacao/:token", async (req, res) => {
         const insertAvaliacao = await pool.query(
             "INSERT INTO avaliacoes(token_aluno,token_avaliador,status) VALUES ($1,$2,$3)",
             [token, avaliadorEscolhido.usertoken, "Pendente"]
-        );
+            );
 
         //pegar o id da avaliacao
         const getAvaliacao = await pool.query(
             "SELECT * FROM avaliacoes WHERE token_aluno = $1 and token_avaliador = $2 ORDER BY id",
             [token, avaliadorEscolhido.usertoken]
-        );
+            );
 
         const avaliacaoID = getAvaliacao.rows[getAvaliacao.rowCount - 1].id;
 
         //passar atividade do aluno para lista de atividades da avaliacao
         const getAtividades = await pool.query("SELECT * FROM atividades WHERE usertoken = $1", [
             token
-        ]);
+            ]);
 
         console.log(getAtividades.rows[0].titulo);
 
@@ -231,7 +231,7 @@ app.get("/solicitacao/:token", async (req, res) => {
         for (var j = 0; j < getAtividades.rowCount; j++) {
             setAtividades = await pool.query("INSERT INTO atividades_submetidas(id_avaliacao,titulo, data_inicio, data_fim, categoria, sub_categoria, descricao, quantidade_horas, usertoken, doc_link, nome_pdf, horas_validas) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)", [
                 avaliacaoID, getAtividades.rows[j].titulo, getAtividades.rows[j].data_inicio, getAtividades.rows[j].data_fim, getAtividades.rows[j].categoria, getAtividades.rows[j].sub_categoria, getAtividades.rows[j].descricao, getAtividades.rows[j].quantidade_horas, getAtividades.rows[j].usertoken, getAtividades.rows[j].doc_link, getAtividades.rows[j].nome_pdf, "0"
-            ])
+                ])
         }
 
         res.json("Solicitação Cadastrada");
@@ -258,7 +258,7 @@ app.post("/atividades", async (req, res) => {
 
         const row = await pool.query("INSERT INTO atividades(titulo, data_inicio, data_fim, categoria, sub_categoria, descricao, quantidade_horas, usertoken, doc_link, nome_pdf) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [
             myJSON.titulo, myJSON.dataInicio, myJSON.dataFim, myJSON.selectedCategoria, myJSON.selectedSubCategoria, myJSON.descricao, myJSON.quantHoras, myJSON.token, myJSON.link, myJSON.nomePdf
-        ]);
+            ]);
 
         res.json("Atividade Cadastrada");
         return;
@@ -278,7 +278,7 @@ app.get("/atividades/:token", async (req, res) => {
 
         const busca = await pool.query("SELECT * FROM atividades WHERE usertoken = $1", [
             token
-        ]);
+            ]);
 
         if (busca.rowCount < 1) {
             res.json([]);
@@ -347,47 +347,47 @@ app.put("/atividades/pdf/:id", async (req, res) => {
         const updateTitulo = await pool.query(
             "UPDATE atividades SET titulo = $1 WHERE id = $2",
             [myJSON.titulo, id]
-        );
+            );
 
         const updateDataInicio = await pool.query(
             "UPDATE atividades SET data_inicio = $1 WHERE id = $2",
             [myJSON.dataInicio, id]
-        );
+            );
 
         const updateDataFim = await pool.query(
             "UPDATE atividades SET data_fim = $1 WHERE id = $2",
             [myJSON.dataFim, id]
-        );
+            );
 
         const updateDescricao = await pool.query(
             "UPDATE atividades SET descricao = $1 WHERE id = $2",
             [myJSON.descricao, id]
-        );
+            );
 
         const updateQuantHoras = await pool.query(
             "UPDATE atividades SET quantidade_horas = $1 WHERE id = $2",
             [myJSON.quantHoras, id]
-        );
+            );
 
         const updateDocLink = await pool.query(
             "UPDATE atividades SET doc_Link = $1 WHERE id = $2",
             [myJSON.docLink, id]
-        );
+            );
 
         const updateCategoria = await pool.query(
             "UPDATE atividades SET categoria = $1 WHERE id = $2",
             [myJSON.selectedCategoria, id]
-        );
+            );
 
         const updateSubCategoria = await pool.query(
             "UPDATE atividades SET sub_categoria = $1 WHERE id = $2",
             [myJSON.selectedSubCategoria, id]
-        );
+            );
 
         const updateNomePdf = await pool.query(
             "UPDATE atividades SET nome_pdf = $1 WHERE id = $2",
             [myJSON.nomePdf, id]
-        );
+            );
 
         res.json("Atividade Atualizada!");
         return;
@@ -406,47 +406,47 @@ app.put("/atividades/:id", async (req, res) => {
         const updateTitulo = await pool.query(
             "UPDATE atividades SET titulo = $1 WHERE id = $2",
             [myJSON.titulo, id]
-        );
+            );
 
         const updateDataInicio = await pool.query(
             "UPDATE atividades SET data_inicio = $1 WHERE id = $2",
             [myJSON.dataInicio, id]
-        );
+            );
 
         const updateDataFim = await pool.query(
             "UPDATE atividades SET data_fim = $1 WHERE id = $2",
             [myJSON.dataFim, id]
-        );
+            );
 
         const updateDescricao = await pool.query(
             "UPDATE atividades SET descricao = $1 WHERE id = $2",
             [myJSON.descricao, id]
-        );
+            );
 
         const updateQuantHoras = await pool.query(
             "UPDATE atividades SET quantidade_horas = $1 WHERE id = $2",
             [myJSON.quantHoras, id]
-        );
+            );
 
         const updateDocLink = await pool.query(
             "UPDATE atividades SET doc_Link = $1 WHERE id = $2",
             [myJSON.docLink, id]
-        );
+            );
 
         const updateCategoria = await pool.query(
             "UPDATE atividades SET categoria = $1 WHERE id = $2",
             [myJSON.selectedCategoria, id]
-        );
+            );
 
         const updateSubCategoria = await pool.query(
             "UPDATE atividades SET sub_categoria = $1 WHERE id = $2",
             [myJSON.selectedSubCategoria, id]
-        );
+            );
 
         const updateNomePdf = await pool.query(
             "UPDATE atividades SET nome_pdf = $1 WHERE id = $2",
             [myJSON.nomePdf, id]
-        );
+            );
 
         res.json("Atividade Atualizada!");
         return;
@@ -467,7 +467,7 @@ app.delete("/atividades/:id", async (req, res) => {
 
         const deleteTodo = await pool.query("DELETE FROM atividades WHERE id = $1 AND usertoken = $2", [
             id, body.token
-        ]);
+            ]);
 
         res.json("Atividade deletada");
         return;
@@ -489,7 +489,7 @@ app.get("/alunoSolicitacoes/:token", async (req, res) => {
         const isAluno = await pool.query(
             "SELECT * FROM alunos WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (isAluno.rowCount < 1) {
             res.json([]);
@@ -499,7 +499,7 @@ app.get("/alunoSolicitacoes/:token", async (req, res) => {
         const getSolicitacoes = await pool.query(
             "SELECT * FROM avaliacoes WHERE token_aluno = $1 ORDER BY id",
             [token]
-        );
+            );
 
         if (getSolicitacoes.rowCount < 1) {
             res.json([]);
@@ -525,7 +525,7 @@ app.post("/atividadesAvaliadas", async (req, res) => {
         const isAluno = await pool.query(
             "SELECT * FROM alunos WHERE usertoken = $1",
             [body.token]
-        );
+            );
 
         if (isAluno.rowCount < 1) {
             res.json([]);
@@ -535,7 +535,7 @@ app.post("/atividadesAvaliadas", async (req, res) => {
         const validator = await pool.query(
             "SELECT * FROM avaliacoes WHERE token_aluno = $1 AND id = $2",
             [body.token, body.id]
-        );
+            );
 
         if (validator.rowCount < 1) {
             res.json([]);
@@ -545,7 +545,7 @@ app.post("/atividadesAvaliadas", async (req, res) => {
         const getAtividades = await pool.query(
             "SELECT * FROM atividades_submetidas WHERE usertoken = $1 and id_avaliacao = $2 ORDER BY id",
             [body.token, validator.rows[0].id]
-        );
+            );
 
         if (getAtividades.rowCount < 1) {
             res.json([]);
@@ -572,7 +572,7 @@ app.get("/avaliadorSolicitacoes/:token", async (req, res) => {
         const isAvaliador = await pool.query(
             "SELECT * FROM avaliadores WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (isAvaliador.rowCount < 1) {
             console.log("Não é avaliador")
@@ -582,7 +582,7 @@ app.get("/avaliadorSolicitacoes/:token", async (req, res) => {
 
         const solicitacoes = await pool.query("SELECT * FROM avaliacoes WHERE token_avaliador = $1", [
             token
-        ]);
+            ]);
 
         if (solicitacoes.rowCount < 1) {
             res.json([]);
@@ -595,7 +595,7 @@ app.get("/avaliadorSolicitacoes/:token", async (req, res) => {
 
             aluno = await pool.query("SELECT * FROM alunos WHERE usertoken = $1", [
                 solicitacoes.rows[i].token_aluno
-            ]);
+                ]);
 
             if (aluno.rowCount < 1) {
                 solicitacoes.rows[i].token_aluno = "Nome indisponivel"
@@ -621,7 +621,7 @@ app.post("/atividadesAvaliacao", async (req, res) => {
         const isAvaliador = await pool.query(
             "SELECT * FROM avaliadores WHERE usertoken = $1",
             [body.token]
-        );
+            );
 
         if (isAvaliador.rowCount < 1) {
             console.log("Não é avaliador")
@@ -632,7 +632,7 @@ app.post("/atividadesAvaliacao", async (req, res) => {
         //verificar se essa avaliacao pertence a quem está solicitando
         const validator = await pool.query("SELECT * FROM avaliacoes WHERE id = $1 AND token_avaliador = $2", [
             body.id, body.token
-        ]);
+            ]);
 
         if (validator.rowCount < 1) {
             res.json([]);
@@ -641,7 +641,7 @@ app.post("/atividadesAvaliacao", async (req, res) => {
 
         const atividades = await pool.query("SELECT * FROM atividades_submetidas WHERE id_avaliacao = $1", [
             body.id
-        ]);
+            ]);
 
         if (atividades.rowCount < 1) {
             res.json([]);
@@ -665,7 +665,7 @@ app.put("/enviarAvaliacao", async (req, res) => {
         const isAvaliador = await pool.query(
             "SELECT * FROM avaliadores WHERE usertoken = $1",
             [body.token]
-        );
+            );
 
         if (isAvaliador.rowCount < 1) {
             res.json("Falha na permissão");
@@ -675,7 +675,7 @@ app.put("/enviarAvaliacao", async (req, res) => {
         //verificar a qual avaliação a atividade pertence
         const validator = await pool.query("SELECT * FROM atividades_submetidas WHERE id = $1", [
             body.id
-        ]);
+            ]);
 
         if (validator.rowCount < 1) {
             res.json("Atividade não existe");
@@ -685,7 +685,7 @@ app.put("/enviarAvaliacao", async (req, res) => {
         //verificar se essa avaliacao pertence a quem está solicitando
         const validator1 = await pool.query("SELECT * FROM avaliacoes WHERE id = $1 AND token_avaliador = $2", [
             validator.rows[0].id_avaliacao, body.token
-        ]);
+            ]);
 
         if (validator1.rowCount < 1) {
             res.json("Falha na permissão");
@@ -695,7 +695,7 @@ app.put("/enviarAvaliacao", async (req, res) => {
         //update
         const update = await pool.query("UPDATE atividades_submetidas SET feedback = $1, horas_validas = $2 WHERE id = $3", [
             body.feedback, body.quantHoras, body.id
-        ]);
+            ]);
 
         res.json("Feedback adicionado")
         return;
@@ -716,7 +716,7 @@ app.post("/aprovarAtividades", async (req, res) => {
         const isAvaliador = await pool.query(
             "SELECT * FROM avaliadores WHERE usertoken = $1",
             [body.token]
-        );
+            );
 
         if (isAvaliador.rowCount < 1) {
             res.json("Falha na permissão");
@@ -725,11 +725,11 @@ app.post("/aprovarAtividades", async (req, res) => {
 
         const getAvaliacao = await pool.query("SELECT * FROM avaliacoes WHERE id = $1 AND token_avaliador = $2", [
             body.id_avaliacao, body.token
-        ]);
+            ]);
 
         const getAluno = await pool.query("UPDATE alunos SET status_entrega = TRUE WHERE usertoken = $1", [
             getAvaliacao.rows[0].token_aluno
-        ]);
+            ]);
 
         res.json("Atividades entregues!")
         return;
@@ -750,7 +750,7 @@ app.post("/finalizarAvaliacao", async (req, res) => {
         const isAvaliador = await pool.query(
             "SELECT * FROM avaliadores WHERE usertoken = $1",
             [body.token]
-        );
+            );
 
         if (isAvaliador.rowCount < 1) {
             res.json("Falha na permissão");
@@ -760,7 +760,7 @@ app.post("/finalizarAvaliacao", async (req, res) => {
         //verificar se essa avaliacao pertence a quem está solicitando
         const validator1 = await pool.query("SELECT * FROM avaliacoes WHERE id = $1 AND token_avaliador = $2", [
             body.id_avaliacao, body.token
-        ]);
+            ]);
 
         console.log(body.id_avaliacao, body.token);
 
@@ -772,7 +772,7 @@ app.post("/finalizarAvaliacao", async (req, res) => {
         //update
         const update = await pool.query("UPDATE avaliacoes SET status = $1 WHERE id = $2", [
             "Avaliado", body.id_avaliacao
-        ]);
+            ]);
 
         res.json("Submissão Avaliada")
         return;
@@ -794,7 +794,7 @@ app.get("/alunosPendentes/:token", async (req, res) => {
 
         const validarPermissao = await pool.query("SELECT * FROM admins WHERE usertoken = $1", [
             token
-        ]);
+            ]);
 
         if (validarPermissao.rowCount < 1) {
             res.json([]);
@@ -828,7 +828,7 @@ app.get("/alunos/:token", async (req, res) => {
 
         const validarPermissao = await pool.query("SELECT * FROM admins WHERE usertoken = $1", [
             token
-        ]);
+            ]);
 
         if (validarPermissao.rowCount < 1) {
             res.json([]);
@@ -862,7 +862,7 @@ app.get("/avaliadores/:token", async (req, res) => {
 
         const validarPermissao = await pool.query("SELECT * FROM admins WHERE usertoken = $1", [
             token
-        ]);
+            ]);
 
         if (validarPermissao.rowCount < 1) {
             res.json([]);
@@ -897,7 +897,7 @@ app.post("/avaliadores/:token", async (req, res) => {
         const validarPermissao = await pool.query(
             "SELECT * FROM admins WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (validarPermissao.rowCount < 1) {
             res.json("Operação Inválida: Sem permissão de administrador");
@@ -907,7 +907,7 @@ app.post("/avaliadores/:token", async (req, res) => {
         const validarInsert = await pool.query(
             "SELECT * FROM avaliadores WHERE email = $1",
             [myJSON.email]
-        );
+            );
 
         if (validarInsert.rowCount > 0) {
             res.json("Já existe avaliador com esse Email");
@@ -917,7 +917,7 @@ app.post("/avaliadores/:token", async (req, res) => {
         const insertAvaliador = await pool.query(
             "INSERT INTO avaliadores (nome, matricula, email, senha, usertoken) VALUES ($1,$2,$3,$4,$5)",
             [myJSON.nome, myJSON.matricula, myJSON.email, myJSON.senha, myJSON.usertoken]
-        );
+            );
 
         res.json("Avaliador Cadastrado");
         return;
@@ -938,7 +938,7 @@ app.post("/liberarAcessoAluno", async (req, res) => {
         const validarPermissao = await pool.query(
             "SELECT * FROM admins WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (validarPermissao.rowCount < 1) {
             res.json("Operação Inválida: Sem permissão de administrador");
@@ -948,7 +948,7 @@ app.post("/liberarAcessoAluno", async (req, res) => {
         const buscaAlunoPendente = await pool.query(
             "SELECT * FROM alunos_pendentes WHERE id = $1",
             [id]
-        );
+            );
 
         if (buscaAlunoPendente.rowCount > 0) {
             try {
@@ -959,11 +959,11 @@ app.post("/liberarAcessoAluno", async (req, res) => {
                     buscaAlunoPendente.rows[0].senha, buscaAlunoPendente.rows[0].matricula,
                     buscaAlunoPendente.rows[0].curso, buscaAlunoPendente.rows[0].usertoken,
                     buscaAlunoPendente.rows[0].data_criacao]
-                );
+                    );
 
                 const deleteAlunoPendente = await pool.query("DELETE FROM alunos_pendentes WHERE id = $1", [
                     id
-                ]);
+                    ]);
 
                 res.json("Acesso liberado para aluno: " + buscaAlunoPendente.rows[0].nome);
                 return;
@@ -996,7 +996,7 @@ app.post("/negarAcessoAluno", async (req, res) => {
         const validarPermissao = await pool.query(
             "SELECT * FROM admins WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (validarPermissao.rowCount < 1) {
             res.json("Operação Inválida: Sem permissão de administrador");
@@ -1005,13 +1005,62 @@ app.post("/negarAcessoAluno", async (req, res) => {
 
         const alunoPendente = await pool.query("SELECT * FROM alunos_pendentes WHERE id = $1", [
             id
-        ]);
+            ]);
 
         const deleteAlunoPendente = await pool.query("DELETE FROM alunos_pendentes WHERE id = $1", [
             id
-        ]);
+            ]);
 
         res.json("Acesso negado para: " + alunoPendente.rows[0].nome);
+        return;
+
+    } catch (err) {
+        console.log(err);
+        res.json("Um problema ocorreu!");
+        return;
+    }
+});
+
+//cadastrar versão de categorias
+app.post("/adicionarVersao", async (req, res) => {
+    try {
+        const myJSON = req.body;
+        const token = myJSON.token;
+        const id = myJSON.id;
+
+        const validarPermissao = await pool.query(
+            "SELECT * FROM admins WHERE usertoken = $1",
+            [token]
+            );
+
+        if (validarPermissao.rowCount < 1) {
+            res.json("Operação Inválida: Sem permissão de administrador");
+            return;
+        }
+
+        const inserirVersao = await pool.query("INSERT INTO versoes(nome,horas) VALUES ($1,$2) ", [
+            myJSON.vNome, myJSON.vHoras
+            ]);
+
+        const getInserirVersao = await pool.query("SELECT * FROM versoes WHERE id = (select max(id) from versoes)");
+        console.log(getInserirVersao.rows[0].id)
+
+        var inserirCategorias = [];
+        for(var i = 0; i < myJSON.categorias.length; i++){
+            inserirCategorias = await pool.query("INSERT INTO categorias(id_versao,id,nome,horas) values ($1,$2,$3,$4);", [
+                getInserirVersao.rows[0].id, myJSON.categorias[i].id, myJSON.categorias[i].nome, myJSON.categorias[i].horas
+            ]);
+        }
+
+        var inserirSubCategorias = [];
+        for(var i = 0; i < myJSON.subCategorias.length; i++){
+            inserirSubCategorias = await pool.query("INSERT INTO subcategorias(id_versao,id_categoria,id,nome) values ($1,$2,$3,$4);", [
+                getInserirVersao.rows[0].id, myJSON.subCategorias[i].categoria,myJSON.subCategorias[i].id, myJSON.subCategorias[i].nome
+            ]);
+        }
+        
+
+        res.json("Versão cadastrada!");
         return;
 
     } catch (err) {
@@ -1032,7 +1081,7 @@ app.put("/desativarAluno", async (req, res) => {
         const validarPermissao = await pool.query(
             "SELECT * FROM admins WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (validarPermissao.rowCount < 1) {
             res.json("Operação Inválida: Sem permissão de administrador");
@@ -1041,11 +1090,11 @@ app.put("/desativarAluno", async (req, res) => {
 
         const aluno = await pool.query("SELECT * FROM alunos WHERE id = $1", [
             id
-        ]);
+            ]);
 
         const update = await pool.query("UPDATE alunos SET ativo = $1 WHERE id = $2", [
             false, id
-        ]);
+            ]);
 
         res.json("Acesso suspenso para: " + aluno.rows[0].nome);
         return;
@@ -1067,7 +1116,7 @@ app.put("/ativarAluno", async (req, res) => {
         const validarPermissao = await pool.query(
             "SELECT * FROM admins WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (validarPermissao.rowCount < 1) {
             res.json("Operação Inválida: Sem permissão de administrador");
@@ -1076,11 +1125,11 @@ app.put("/ativarAluno", async (req, res) => {
 
         const aluno = await pool.query("SELECT * FROM alunos WHERE id = $1", [
             id
-        ]);
+            ]);
 
         const update = await pool.query("UPDATE alunos SET ativo = $1 WHERE id = $2", [
             true, id
-        ]);
+            ]);
 
         res.json("Acesso reativado para: " + aluno.rows[0].nome);
         return;
@@ -1104,7 +1153,7 @@ app.put("/desativarAvaliador", async (req, res) => {
         const validarPermissao = await pool.query(
             "SELECT * FROM admins WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (validarPermissao.rowCount < 1) {
             res.json("Operação Inválida: Sem permissão de administrador");
@@ -1113,11 +1162,11 @@ app.put("/desativarAvaliador", async (req, res) => {
 
         const avaliador = await pool.query("SELECT * FROM avaliadores WHERE id = $1", [
             id
-        ]);
+            ]);
 
         const update = await pool.query("UPDATE avaliadores SET ativo = $1 WHERE id = $2", [
             false, id
-        ]);
+            ]);
 
         res.json("Acesso suspenso para: " + avaliador.rows[0].nome);
         return;
@@ -1139,7 +1188,7 @@ app.put("/ativarAvaliador", async (req, res) => {
         const validarPermissao = await pool.query(
             "SELECT * FROM admins WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (validarPermissao.rowCount < 1) {
             res.json("Operação Inválida: Sem permissão de administrador");
@@ -1148,11 +1197,11 @@ app.put("/ativarAvaliador", async (req, res) => {
 
         const avaliador = await pool.query("SELECT * FROM avaliadores WHERE id = $1", [
             id
-        ]);
+            ]);
 
         const update = await pool.query("UPDATE avaliadores SET ativo = $1 WHERE id = $2", [
             true, id
-        ]);
+            ]);
 
         res.json("Acesso reativado para: " + avaliador.rows[0].nome);
         return;
@@ -1172,7 +1221,7 @@ app.get("/verify/:token", async (req, res) => {
         const isAvaliador = await pool.query(
             "SELECT * FROM avaliadores WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (isAvaliador.rowCount > 0) {
             res.json("avaliador");
@@ -1182,7 +1231,7 @@ app.get("/verify/:token", async (req, res) => {
         const isAdmin = await pool.query(
             "SELECT * FROM admins WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (isAdmin.rowCount > 0) {
             res.json("admin");
@@ -1192,7 +1241,7 @@ app.get("/verify/:token", async (req, res) => {
         const isAluno = await pool.query(
             "SELECT * FROM alunos WHERE usertoken = $1",
             [token]
-        );
+            );
 
         if (isAluno.rowCount > 0) {
             res.json("aluno");
@@ -1215,7 +1264,7 @@ app.post("/admins/verify", async (req, res) => {
         const validarInsert = await pool.query(
             "SELECT * FROM admins WHERE email = $1 and senha = $2",
             [myJSON.email, myJSON.senha]
-        );
+            );
 
         if (validarInsert.rowCount > 0) {
             res.json(validarInsert.rows[0]);
@@ -1238,7 +1287,7 @@ app.post("/avaliadores-verify", async (req, res) => {
         const validarInsert = await pool.query(
             "SELECT * FROM avaliadores WHERE email = $1 and senha = $2",
             [myJSON.email, myJSON.senha]
-        );
+            );
 
         if (validarInsert.rowCount > 0) {
             res.json(validarInsert.rows[0]);

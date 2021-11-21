@@ -110,4 +110,32 @@ CREATE TABLE IF NOT EXISTS avaliador_selecionado(
 	id_avaliador_escolhido SERIAL NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS versoes(
+	id SERIAL NOT NULL,
+	nome VARCHAR(100) NOT NULL,
+	horas VARCHAR(10) NOT NULL,
+	data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS categorias(
+	id INT NOT NULL,
+	pk SERIAL NOT NULL,
+	id_versao SERIAL NOT NULL,
+	nome VARCHAR(200) NOT NULL,
+	horas VARCHAR(10) NOT NULL,
+	data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (pk)
+);
+
+CREATE TABLE IF NOT EXISTS subcategorias(
+	id INT NOT NULL,
+	pk SERIAL NOT NULL,
+	id_categoria INT NOT NULL,
+	id_versao SERIAL NOT NULL,
+	nome VARCHAR(200) NOT NULL,
+	data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (pk)
+);
+
 INSERT INTO admins(email, senha, usertoken) VALUES ('admin@gmail.com','admin','sd67d57sadJVv5d7Nva85BFd58FSdaA6c9');
