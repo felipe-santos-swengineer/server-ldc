@@ -19,40 +19,36 @@ const getUniqueUsertoken = async() => {
     var unique = false;
 
     while(unique === false){
-        try {
-            usertoken =  uuidv4();
+        usertoken =  uuidv4();
 
-            const testarAlunosPendentes = await pool.query(
-                "SELECT * FROM alunos_pendentes WHERE usertoken = $1",
-                [usertoken]
-                );
+        const testarAlunosPendentes = await pool.query(
+            "SELECT * FROM alunos_pendentes WHERE usertoken = $1",
+            [usertoken]
+            );
 
-            const testarAlunos = await pool.query(
-                "SELECT * FROM alunos WHERE usertoken = $1",
-                [usertoken]
-                );
+        const testarAlunos = await pool.query(
+            "SELECT * FROM alunos WHERE usertoken = $1",
+            [usertoken]
+            );
 
-            const testarAdmins = await pool.query(
-                "SELECT * FROM admins WHERE usertoken = $1",
-                [usertoken]
-                );
+        const testarAdmins = await pool.query(
+            "SELECT * FROM admins WHERE usertoken = $1",
+            [usertoken]
+            );
 
-            const testarAvaliadores = await pool.query(
-                "SELECT * FROM avaliadores WHERE usertoken = $1",
-                [usertoken]
-                );
+        const testarAvaliadores = await pool.query(
+            "SELECT * FROM avaliadores WHERE usertoken = $1",
+            [usertoken]
+            );
 
-            if(testarAlunosPendentes.rowCount > 0 || testarAlunos.rowCount > 0 || testarAvaliadores.rowCount > 0 || testarAdmins.rowCount > 0){
-                unique = false;
-            }
-            else{
-                unique = true
-                break;
-            }
-        } catch (err) {
-            console.log(err);
-            return;
+        if(testarAlunosPendentes.rowCount > 0 || testarAlunos.rowCount > 0 || testarAvaliadores.rowCount > 0 || testarAdmins.rowCount > 0){
+            unique = false;
         }
+        else{
+            unique = true
+            break;
+        }
+        
     }
 
     return usertoken;
@@ -1710,7 +1706,7 @@ app.post("/recuperarSenha", async (req, res) => {
 });
 
 
-const port = process.env.PORT || 5000;
+const port = 5000;
 
 app.listen(port, () => {
     console.log("Servidor rodando na porta " + port);
