@@ -4,7 +4,6 @@ const cors = require("cors");
 const pool = require("./db");
 const path = require("path");
 const fs = require("fs");
-require("dotenv").config();
 const enviarEmail = require("./email");
 const { v4: uuidv4 } = require('uuid');
 
@@ -15,11 +14,9 @@ app.use(express.json());
 
 const getUniqueUsertoken = async() => {
 
-    var usertoken;
+    var usertoken = uuidv4();
     var unique = false;
 
-    usertoken =  uuidv4();
-/*
     while(unique === false){
         usertoken =  uuidv4();
 
@@ -54,7 +51,7 @@ const getUniqueUsertoken = async() => {
     }
 
     return usertoken;
-    */
+   
 }
 
 app.get("/", async (req, res) => {
@@ -1709,7 +1706,7 @@ app.post("/recuperarSenha", async (req, res) => {
 });
 
 
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 app.listen(port, () => {
     console.log("Servidor rodando na porta " + port);
