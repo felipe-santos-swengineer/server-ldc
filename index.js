@@ -13,36 +13,49 @@ app.use(cors());
 app.use(express.json());
 
 
-const getUniqueUsertoken = async(usertoken) => {
+const getUniqueUsertoken = async() => {
 
-    const testarAlunosPendentes = await pool.query(
-        "SELECT * FROM alunos_pendentes WHERE usertoken = $1",
-        [usertoken]
-        );
+    var usertoken;
+    var unique = false;
 
-    const testarAlunos = await pool.query(
-        "SELECT * FROM alunos WHERE usertoken = $1",
-        [usertoken]
-        );
+    while(unique === false){
+        try {
+            usertoken =  uuidv4();
 
-    const testarAdmins = await pool.query(
-        "SELECT * FROM admins WHERE usertoken = $1",
-        [usertoken]
-        );
+            const testarAlunosPendentes = await pool.query(
+                "SELECT * FROM alunos_pendentes WHERE usertoken = $1",
+                [usertoken]
+                );
 
-    const testarAvaliadores = await pool.query(
-        "SELECT * FROM avaliadores WHERE usertoken = $1",
-        [usertoken]
-        );
+            const testarAlunos = await pool.query(
+                "SELECT * FROM alunos WHERE usertoken = $1",
+                [usertoken]
+                );
 
-    if(testarAlunosPendentes.rowCount > 0 || testarAlunos.rowCount > 0 || testarAvaliadores.rowCount > 0 || testarAdmins.rowCount > 0){
-        return false;
+            const testarAdmins = await pool.query(
+                "SELECT * FROM admins WHERE usertoken = $1",
+                [usertoken]
+                );
+
+            const testarAvaliadores = await pool.query(
+                "SELECT * FROM avaliadores WHERE usertoken = $1",
+                [usertoken]
+                );
+
+            if(testarAlunosPendentes.rowCount > 0 || testarAlunos.rowCount > 0 || testarAvaliadores.rowCount > 0 || testarAdmins.rowCount > 0){
+                unique = false;
+            }
+            else{
+                unique = true
+                break;
+            }
+        } catch (err) {
+            console.log(err);
+            return;
+        }
     }
-    else{
-        return true;
-    }
-    
 
+    return usertoken;
 }
 
 app.get("/", async (req, res) => {
@@ -77,11 +90,8 @@ app.post("/alunosPendentes", async (req, res) => {
         }
 
         
-        var testeUniqueKey = await getUniqueUsertoken(newAluno.usertoken);
-        if(testeUniqueKey === false){
-            res.json("Ocorreu um erro, tente novamente");
-            return;
-        }
+        newAluno.usertoken = await getUniqueUsertoken();
+        //console.log(newAluno.usertoken);
 
         const newAlunoPendente = await pool.query(
             "INSERT INTO alunos_pendentes (nome,email,senha,matricula,curso,usertoken) VALUES($1,$2,$3,$4,$5,$6)",
@@ -1266,11 +1276,7 @@ app.post("/avaliadores/:token", async (req, res) => {
             return;
         }
 
-        var testeUniqueKey = await getUniqueUsertoken(myJSON.usertoken);
-        if(testeUniqueKey === false){
-            res.json("Ocorreu um erro, tente novamente");
-            return;
-        }
+        myJSON.usertoken = await getUniqueUsertoken();
 
         const insertAvaliador = await pool.query(
             "INSERT INTO avaliadores (nome, matricula, email, senha, usertoken) VALUES ($1,$2,$3,$4,$5)",
