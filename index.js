@@ -412,7 +412,7 @@ app.get('/download/:nome', async (req, res) => {
     try {
         const { nome } = req.params;
         var filePath = "/uploads/" + nome; //caminho do arquivo completo
-        console.log("Gerando link de acesso ao arquivo: " + filePath);
+        //console.log("Gerando link de acesso ao arquivo: " + filePath);
         res.sendFile(__dirname + filePath);
         return;
     } catch (err) {
@@ -955,7 +955,7 @@ app.post("/finalizarAvaliacao", async (req, res) => {
             body.id_avaliacao, body.token
             ]);
 
-        console.log(body.id_avaliacao, body.token);
+        //console.log(body.id_avaliacao, body.token);
 
         if (validator1.rowCount < 1) {
             res.json("Falha na permissão");
@@ -1131,7 +1131,7 @@ app.get("/versao-solicitada/:id_avaliacao", async (req, res) => {
         else {
             const categorias = await pool.query("SELECT * FROM categorias WHERE id_versao = $1",[versao.rows[0].id]);
             const subcategorias = await pool.query("SELECT * FROM subcategorias WHERE id_versao = $1",[versao.rows[0].id]);
-            console.log("versão: " + versao.rows[0].nome + " Categorias: " + categorias.rows.length + " subcategorias: " + subcategorias.rows.length)
+            //console.log("versão: " + versao.rows[0].nome + " Categorias: " + categorias.rows.length + " subcategorias: " + subcategorias.rows.length)
             res.json([categorias.rows, subcategorias.rows, versao.rows[0]])
             return;
         }
