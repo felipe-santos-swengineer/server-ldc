@@ -4,15 +4,60 @@ const cors = require("cors");
 const pool = require("./db");
 const path = require("path");
 const fs = require("fs");
+require("dotenv").config();
+const enviarEmail = require("./email");
+const { v4: uuidv4 } = require('uuid');
 
 //middleware
 app.use(cors());
 app.use(express.json());
 
+
+const getUniqueUsertoken = async() => {
+    
+    var usertoken;
+    var unique = false;
+
+    while(unique === false){
+
+        usertoken =  uuidv4();
+
+        const testarAlunosPendentes = await pool.query(
+            "SELECT * FROM alunos_pendentes WHERE usertoken = $1",
+             [usertoken]
+            );
+
+        const testarAlunos = await pool.query(
+            "SELECT * FROM alunos WHERE usertoken = $1",
+             [usertoken]
+            );
+
+        const testarAdmins = await pool.query(
+            "SELECT * FROM admins WHERE usertoken = $1",
+             [usertoken]
+            );
+
+        const testarAvaliadores = await pool.query(
+            "SELECT * FROM avaliadores WHERE usertoken = $1",
+             [usertoken]
+            );
+
+        if(testarAlunosPendentes.rowCount > 0 || testarAlunos.rowCount > 0 || testarAvaliadores.rowCount > 0 || testarAdmins.rowCount > 0){
+            unique = false;
+        }
+        else{
+            unique = true
+            break;
+        }
+    }
+
+    return usertoken;
+}
+
 app.get("/", async (req, res) => {
     const test = await pool.query("SELECT * FROM admins");
     if (test.rowCount > 0) {
-        res.json("Servidor LDC ativadaço!");
+        res.json("Servidor CHRONOS ativado!");
         return;
     }
     res.json("Banco de Dados Inoperante!")
@@ -40,12 +85,16 @@ app.post("/alunosPendentes", async (req, res) => {
             return;
         }
 
+        
+        newAluno.usertoken = await getUniqueUsertoken();
+        //console.log(newAluno.usertoken);
+      
         const newAlunoPendente = await pool.query(
             "INSERT INTO alunos_pendentes (nome,email,senha,matricula,curso,usertoken) VALUES($1,$2,$3,$4,$5,$6)",
             [newAluno.nome, newAluno.email,
             newAluno.senha, newAluno.matricula,
             newAluno.curso, newAluno.usertoken]
-            );
+            ); 
 
         res.json("Cadastro solicitado ao Administrador!");
         return;
@@ -243,7 +292,6 @@ app.get("/solicitacao/:token", async (req, res) => {
             }
         }
 
-        console.log("Nova avaliação para: " + avaliadorEscolhido.nome);
 
         const versao = await pool.query("SELECT * FROM versoes WHERE id = (select max(id) from versoes)");
 
@@ -266,7 +314,6 @@ app.get("/solicitacao/:token", async (req, res) => {
             token
             ]);
 
-        console.log(getAtividades.rows[0].titulo);
 
         var setAtividades = [];
         for (var j = 0; j < getAtividades.rowCount; j++) {
@@ -606,8 +653,7 @@ app.post("/atividadesAvaliadas", async (req, res) => {
 app.post("/atividadesAvaliadasAvaliador", async (req, res) => {
     try {
 
-        const body = req.body;  
-        console.log(body.token + " " + body.id)
+        const body = req.body; 
 
         const isAvaliador = await pool.query(
             "SELECT * FROM avaliadores WHERE usertoken = $1",
@@ -674,6 +720,45 @@ app.post("/getAvaliador", async (req, res) => {
     }
 });
 
+app.post("/updateAvaliador/:token", async (req, res) => {
+    try {
+        const { token } = req.params;
+        const myJSON = req.body;
+
+        if(myJSON.emailNovo.length > 0 && myJSON.senhaNova.length > 0){
+
+            const users = await pool.query("UPDATE avaliadores SET email = $1 , senha = $2 WHERE usertoken = $3", [
+                myJSON.emailNovo, myJSON.senhaNova, token
+                ]);
+        }
+
+        else if(myJSON.emailNovo.length > 0){
+
+            const users = await pool.query("UPDATE avaliadores SET email = $1 WHERE usertoken = $2", [
+                myJSON.emailNovo, token
+                ]);
+        }
+
+        else if(myJSON.senhaNova.length > 0){
+
+            const users = await pool.query("UPDATE avaliadores SET senha = $1 WHERE usertoken = $2", [
+                myJSON.senhaNova, token
+                ]);
+        }
+
+
+
+        res.json("");
+        return;
+        
+
+    } catch (err) {
+        console.log(err);
+        res.json("");
+        return;
+    }
+});
+
 //getSolicitacoes
 app.get("/avaliadorSolicitacoes/:token", async (req, res) => {
     try {
@@ -685,7 +770,6 @@ app.get("/avaliadorSolicitacoes/:token", async (req, res) => {
             );
 
         if (isAvaliador.rowCount < 1) {
-            console.log("Não é avaliador")
             res.json([]);
             return;
         }
@@ -734,7 +818,6 @@ app.post("/atividadesAvaliacao", async (req, res) => {
             );
 
         if (isAvaliador.rowCount < 1) {
-            console.log("Não é avaliador")
             res.json([]);
             return;
         }
@@ -1189,6 +1272,8 @@ app.post("/avaliadores/:token", async (req, res) => {
             return;
         }
 
+        myJSON.usertoken = await getUniqueUsertoken();
+
         const insertAvaliador = await pool.query(
             "INSERT INTO avaliadores (nome, matricula, email, senha, usertoken) VALUES ($1,$2,$3,$4,$5)",
             [myJSON.nome, myJSON.matricula, myJSON.email, myJSON.senha, myJSON.usertoken]
@@ -1318,7 +1403,6 @@ app.post("/adicionarVersao", async (req, res) => {
             ]);
 
         const getInserirVersao = await pool.query("SELECT * FROM versoes WHERE id = (select max(id) from versoes)");
-        console.log(getInserirVersao.rows[0].id)
 
         var inserirCategorias = [];
         for(var i = 0; i < myJSON.categorias.length; i++){
@@ -1578,8 +1662,52 @@ app.post("/avaliadores-verify", async (req, res) => {
 });
 
 
+//verifica se admin existe
+app.post("/recuperarSenha", async (req, res) => {
+    try {
+        const myJSON = req.body;
+
+        const verificarAluno = await pool.query(
+            "SELECT * FROM alunos WHERE email = $1",
+            [myJSON.email]
+            );
+
+        const verificarAvaliador = await pool.query(
+            "SELECT * FROM avaliadores WHERE email = $1",
+            [myJSON.email]
+            );
+
+        if(verificarAluno.rowCount > 0){   
+            var to = myJSON.email;
+            var subject = 'Recuperação de Senha';
+            var html = '<strong>Segue as orientações para recuperar a conta: </strong><p>1 - Use essa senha provisória <b>' + verificarAluno.rows[0].senha + '</b> para entrar no sistema</p><p>2 - Atualize a senha dentro do sistema</p><p>3 - Caso não tenha solicitado recuperação de senha, ignore este email</p>';
+
+            enviarEmail(to,subject,html);
+            res.json("Email Enviado");
+            return;
+        }
+        else if(verificarAvaliador.rowCount > 0){   
+            var to = myJSON.email;
+            var subject = 'Recuperação de Senha';
+            var html = '<strong>Segue as orientações para recuperar a conta: </strong><p>1 - Use essa senha provisória <b>' + verificarAvaliador.rows[0].senha + '</b> para entrar no sistema</p><p>2 - Atualize a senha dentro do sistema</p><p>3 - Caso não tenha solicitado recuperação de senha, ignore este email</p>';
+
+            enviarEmail(to,subject,html);
+            res.json("Email Enviado");
+            return;
+        }
+
+        res.json("Usuário não encontrado");
+        return;
+
+    } catch (err) {
+        console.log(err);
+        res.json("Um problema ocorreu!");
+    }
+});
+
+
 const port = process.env.PORT || 5000;
 
 app.listen(port, () => {
-    console.log("Servidor rodando na porta 5000");
+    console.log("Servidor rodando na porta " + port);
 });
