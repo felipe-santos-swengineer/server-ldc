@@ -18,6 +18,8 @@ const getUniqueUsertoken = async() => {
     var usertoken;
     var unique = false;
 
+    usertoken =  uuidv4();
+/*
     while(unique === false){
         usertoken =  uuidv4();
 
@@ -48,10 +50,11 @@ const getUniqueUsertoken = async() => {
             unique = true
             break;
         }
-        
+
     }
 
     return usertoken;
+    */
 }
 
 app.get("/", async (req, res) => {
