@@ -108,6 +108,45 @@ app.post("/alunos/verify", async (req, res) => {
     }
 });
 
+app.post("/updateAluno/:token", async (req, res) => {
+    try {
+        const { token } = req.params;
+        const myJSON = req.body;
+
+        if(myJSON.emailNovo.length > 0 && myJSON.senhaNova.length > 0){
+
+            const users = await pool.query("UPDATE alunos SET email = $1 , senha = $2 WHERE usertoken = $3", [
+                myJSON.emailNovo, myJSON.senhaNova, token
+                ]);
+        }
+
+        else if(myJSON.emailNovo.length > 0){
+
+            const users = await pool.query("UPDATE alunos SET email = $1 WHERE usertoken = $2", [
+                myJSON.emailNovo, token
+                ]);
+        }
+
+        else if(myJSON.senhaNova.length > 0){
+
+            const users = await pool.query("UPDATE alunos SET senha = $1 WHERE usertoken = $2", [
+                myJSON.senhaNova, token
+                ]);
+        }
+
+
+
+        res.json("");
+        return;
+        
+
+    } catch (err) {
+        console.log(err);
+        res.json("");
+        return;
+    }
+});
+
 app.get("/alunos/bytoken/:token", async (req, res) => {
     try {
         const { token } = req.params;
@@ -206,10 +245,12 @@ app.get("/solicitacao/:token", async (req, res) => {
 
         console.log("Nova avaliação para: " + avaliadorEscolhido.nome);
 
+        const versao = await pool.query("SELECT * FROM versoes WHERE id = (select max(id) from versoes)");
+
         //criar avaliação
         const insertAvaliacao = await pool.query(
-            "INSERT INTO avaliacoes(token_aluno,token_avaliador,status) VALUES ($1,$2,$3)",
-            [token, avaliadorEscolhido.usertoken, "Pendente"]
+            "INSERT INTO avaliacoes(token_aluno,token_avaliador,status,id_versao) VALUES ($1,$2,$3,$4)",
+            [token, avaliadorEscolhido.usertoken, "Pendente", versao.rows[0].id]
             );
 
         //pegar o id da avaliacao
@@ -562,7 +603,76 @@ app.post("/atividadesAvaliadas", async (req, res) => {
     }
 });
 
+app.post("/atividadesAvaliadasAvaliador", async (req, res) => {
+    try {
+
+        const body = req.body;  
+        console.log(body.token + " " + body.id)
+
+        const isAvaliador = await pool.query(
+            "SELECT * FROM avaliadores WHERE usertoken = $1",
+            [body.token]
+            );
+
+        if (isAvaliador.rowCount < 1) {
+            res.json([]);
+            return;
+        }
+
+        const validator = await pool.query(
+            "SELECT * FROM avaliacoes WHERE token_avaliador = $1 AND id = $2",
+            [body.token, body.id]
+            );
+
+        if (validator.rowCount < 1) {
+            res.json([]);
+            return;
+        }
+
+        const getAtividades = await pool.query(
+            "SELECT * FROM atividades_submetidas WHERE id_avaliacao = $1 ORDER BY id",
+            [validator.rows[0].id]
+            );
+
+        if (getAtividades.rowCount < 1) {
+            res.json([]);
+            return;
+        }
+
+        res.json(getAtividades.rows);
+        return;
+
+    } catch (err) {
+        console.log(err.message);
+        res.json([]);
+        return;
+    }
+});
+
 //************************************Avaliadores***************************************************
+app.post("/getAvaliador", async (req, res) => {
+    try {
+
+        const body = req.body;  
+
+        const isAvaliador = await pool.query(
+            "SELECT * FROM avaliadores WHERE usertoken = $1",
+            [body.token]
+            );
+
+        if (isAvaliador.rowCount < 1) {
+            res.json([]);
+            return;
+        }
+
+        res.json(isAvaliador.rows[0]);
+
+    } catch (err) {
+        console.log(err.message);
+        res.json([]);
+        return;
+    }
+});
 
 //getSolicitacoes
 app.get("/avaliadorSolicitacoes/:token", async (req, res) => {
@@ -727,8 +837,8 @@ app.post("/aprovarAtividades", async (req, res) => {
             body.id_avaliacao, body.token
             ]);
 
-        const getAluno = await pool.query("UPDATE alunos SET status_entrega = TRUE WHERE usertoken = $1", [
-            getAvaliacao.rows[0].token_aluno
+        const getAluno = await pool.query("UPDATE alunos SET status_entrega = $1 WHERE usertoken = $2", [
+            "Em Homologação", getAvaliacao.rows[0].token_aluno,
             ]);
 
         res.json("Atividades entregues!")
@@ -785,6 +895,171 @@ app.post("/finalizarAvaliacao", async (req, res) => {
 });
 
 //************************************Admins***************************************************
+//retorna os detalhes sobre um aluno em homologação
+app.post("/alunoDetalhes/:token", async (req, res) => {
+    try {
+        const { token } = req.params;
+        const myJSON = req.body;
+
+        const validarPermissao = await pool.query(
+            "SELECT * FROM admins WHERE usertoken = $1",
+            [token]
+            );
+
+        if (validarPermissao.rowCount < 1) {
+            res.json("Operação Inválida: Sem permissão de administrador");
+            return;
+        }
+
+        const getAluno = await pool.query(
+            "SELECT * FROM alunos WHERE usertoken = $1",
+            [myJSON.aluno_token]
+            );
+
+        if(getAluno.rowCount < 1){
+            res.json("Aluno não encontrado");
+            return;
+        }
+
+        const getAvaliacao = await pool.query(
+            "SELECT * FROM avaliacoes WHERE token_aluno = $1 ORDER BY id",
+            [myJSON.aluno_token]
+            );
+
+        const avaliacao = getAvaliacao.rows[getAvaliacao.rowCount - 1];
+
+        const getAvaliador = await pool.query(
+            "SELECT * FROM avaliadores WHERE usertoken = $1",
+            [avaliacao.token_avaliador]
+            );
+
+        if(getAvaliador.rowCount < 1){
+            res.json("Ocorreu um erro");
+            return;
+        }
+
+        const getVersao = await pool.query(
+            "SELECT * FROM versoes WHERE id = $1",
+            [avaliacao.id_versao]
+            );
+
+        if(getVersao.rowCount < 1){
+            res.json("Ocorreu um erro");
+            return;
+        }
+
+        res.json("id da avaliação: " + avaliacao.id + "\n" + "Avaliador: " + getAvaliador.rows[0].nome + "\n" + "Versão: " + getVersao.rows[0].nome);
+        return;
+
+
+    } catch (err) {
+        console.log(err);
+        res.json("Um problema ocorreu!");
+    }
+});
+
+
+app.post("/homologarEntrega/:token", async (req, res) => {
+    try {
+        const { token } = req.params;
+        const myJSON = req.body;
+
+        const validarPermissao = await pool.query(
+            "SELECT * FROM admins WHERE usertoken = $1",
+            [token]
+            );
+
+        if (validarPermissao.rowCount < 1) {
+            res.json("Operação Inválida: Sem permissão de administrador");
+            return;
+        }
+
+        const getAluno = await pool.query(
+            "SELECT * FROM alunos WHERE usertoken = $1",
+            [myJSON.aluno_token]
+            );
+
+        if(getAluno.rowCount < 1){
+            res.json("Aluno não encontrado");
+            return;
+        }
+
+        const updateNewStatus = await pool.query(
+            "UPDATE alunos SET status_entrega = $1 WHERE usertoken = $2",
+            [myJSON.status, myJSON.aluno_token]
+            );
+        
+        res.json("Status atualizado para: " + getAluno.rows[0].nome);
+        return;
+
+
+    } catch (err) {
+        console.log(err);
+        res.json("Um problema ocorreu!");
+    }
+});
+
+//retorna a versão atual das AC
+
+app.get("/versao/:token", async (req, res) => {
+    try {
+
+        const { token } = req.params;
+
+        const versao = await pool.query("SELECT * FROM versoes WHERE id = (select max(id) from versoes)");
+
+        if (versao.rowCount < 1) {
+            res.json([]);
+            return;
+        }
+
+        else {
+            const categorias = await pool.query("SELECT * FROM categorias WHERE id_versao = $1",[versao.rows[0].id]);
+            const subcategorias = await pool.query("SELECT * FROM subcategorias WHERE id_versao = $1",[versao.rows[0].id]);
+            console.log("versão: " + versao.rows[0].nome + " Categorias: " + categorias.rows.length + " subcategorias: " + subcategorias.rows.length)
+            res.json([categorias.rows, subcategorias.rows, versao.rows[0]])
+            return;
+        }
+
+    } catch (err) {
+        console.log(err);
+        res.json([]);
+        return;
+    }
+});
+
+
+//retorna a versão especifica das AC
+
+app.get("/versao-solicitada/:id_avaliacao", async (req, res) => {
+    try {
+
+        const { id_avaliacao } = req.params;
+
+        const avaliacoes = await pool.query("SELECT * FROM avaliacoes WHERE id = $1", [id_avaliacao])
+
+        const versao = await pool.query("SELECT * FROM versoes WHERE id = $1",[avaliacoes.rows[0].id_versao]);
+
+        if (versao.rowCount < 1) {
+            res.json([]);
+            return;
+        }
+
+        else {
+            const categorias = await pool.query("SELECT * FROM categorias WHERE id_versao = $1",[versao.rows[0].id]);
+            const subcategorias = await pool.query("SELECT * FROM subcategorias WHERE id_versao = $1",[versao.rows[0].id]);
+            console.log("versão: " + versao.rows[0].nome + " Categorias: " + categorias.rows.length + " subcategorias: " + subcategorias.rows.length)
+            res.json([categorias.rows, subcategorias.rows, versao.rows[0]])
+            return;
+        }
+
+    } catch (err) {
+        console.log(err);
+        res.json([]);
+        return;
+    }
+});
+
 //retorna todos os alunos pendentes
 
 app.get("/alunosPendentes/:token", async (req, res) => {
@@ -954,11 +1229,11 @@ app.post("/liberarAcessoAluno", async (req, res) => {
             try {
 
                 const newAluno = await pool.query(
-                    "INSERT INTO alunos (nome,email,senha,matricula,curso,usertoken,data_criacao) VALUES($1,$2,$3,$4,$5,$6,$7)",
+                    "INSERT INTO alunos (nome,email,senha,matricula,curso,usertoken,data_criacao,status_entrega) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
                     [buscaAlunoPendente.rows[0].nome, buscaAlunoPendente.rows[0].email,
                     buscaAlunoPendente.rows[0].senha, buscaAlunoPendente.rows[0].matricula,
                     buscaAlunoPendente.rows[0].curso, buscaAlunoPendente.rows[0].usertoken,
-                    buscaAlunoPendente.rows[0].data_criacao]
+                    buscaAlunoPendente.rows[0].data_criacao, "Não Entregue"]
                     );
 
                 const deleteAlunoPendente = await pool.query("DELETE FROM alunos_pendentes WHERE id = $1", [
@@ -1049,14 +1324,14 @@ app.post("/adicionarVersao", async (req, res) => {
         for(var i = 0; i < myJSON.categorias.length; i++){
             inserirCategorias = await pool.query("INSERT INTO categorias(id_versao,id,nome,horas) values ($1,$2,$3,$4);", [
                 getInserirVersao.rows[0].id, myJSON.categorias[i].id, myJSON.categorias[i].nome, myJSON.categorias[i].horas
-            ]);
+                ]);
         }
 
         var inserirSubCategorias = [];
         for(var i = 0; i < myJSON.subCategorias.length; i++){
             inserirSubCategorias = await pool.query("INSERT INTO subcategorias(id_versao,id_categoria,id,nome) values ($1,$2,$3,$4);", [
-                getInserirVersao.rows[0].id, myJSON.subCategorias[i].categoria,myJSON.subCategorias[i].id, myJSON.subCategorias[i].nome
-            ]);
+                getInserirVersao.rows[0].id, myJSON.subCategorias[i].id_categoria,myJSON.subCategorias[i].id, myJSON.subCategorias[i].nome
+                ]);
         }
         
 
